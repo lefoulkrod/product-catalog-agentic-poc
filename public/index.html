@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Product Catalog</title>
+  <style>
+    /* ---------- Reset & base ---------- */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+        Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+      background: #f5f7fa;
+      color: #333;
+      line-height: 1.5;
+    }
+
+    /* ---------- Header ---------- */
+    header {
+      background: #1e3a5f;
+      color: #fff;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    header h1 { font-size: 1.4rem; white-space: nowrap; }
+
+    /* ---------- Search bar ---------- */
+    .search-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      background: #fff;
+      padding: 1rem 2rem;
+      border-bottom: 1px solid #ddd;
+      align-items: center;
+    }
+    .search-bar input,
+    .search-bar select {
+      padding: 0.45rem 0.65rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+    .search-bar input[type="text"] { flex: 1; min-width: 200px; }
+    .search-bar input[type="number"] { width: 100px; }
+    .search-bar button {
+      padding: 0.5rem 1.2rem;
+      background: #1e3a5f;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .search-bar button:hover { background: #16304d; }
+    .search-bar .reset-btn { background: #6c757d; }
+    .search-bar .reset-btn:hover { background: #545b62; }
+
+    /* ---------- Timing banner ---------- */
+    .timing {
+      padding: 0.5rem 2rem;
+      font-size: 0.85rem;
+      color: #666;
+      background: #eef2f7;
+      border-bottom: 1px solid #ddd;
+    }
+    .timing .slow { color: #c0392b; font-weight: 600; }
+    .timing .fast { color: #27ae60; font-weight: 600; }
+
+    /* ---------- Product grid ---------- */
+    .products {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1rem;
+      padding: 1.5rem 2rem;
+    }
+    .product-card {
+      background: #fff;
+      border-radius: 6px;
+      border: 1px solid #e0e0e0;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      transition: box-shadow 0.15s;
+    }
+    .product-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .product-card .name { font-weight: 600; font-size: 1rem; }
+    .product-card .sku { font-size: 0.75rem; color: #999; }
+    .product-card .meta { display: flex; justify-content: space-between; font-size: 0.85rem; color: #555; }
+    .product-card .price { font-size: 1.1rem; font-weight: 700; color: #1e3a5f; }
+    .product-card .stock { font-size: 0.8rem; color: #888; }
+    .rating { color: #f39c12; }
+
+    /* ---------- Pagination ---------- */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1rem 2rem 2rem;
+    }
+    .pagination button {
+      padding: 0.4rem 0.9rem;
+      border: 1px solid #ccc;
+      background: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .pagination button:disabled { opacity: 0.5; cursor: default; }
+    .pagination span { font-size: 0.9rem; }
+
+    /* ---------- Loading ---------- */
+    .loading {
+      text-align: center;
+      padding: 3rem;
+      font-size: 1.1rem;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🛍️ Product Catalog</h1>
+  </header>
+
+  <div class="search-bar">
+    <input type="text" id="searchQuery" placeholder="Search products…" />
+    <select id="categoryFilter"><option value="">All Categories</option></select>
+    <select id="brandFilter"><option value="">All Brands</option></select>
+    <input type="number" id="minPrice" placeholder="Min $" min="0" step="0.01" />
+    <input type="number" id="maxPrice" placeholder="Max $" min="0" step="0.01" />
+    <select id="sortField">
+      <option value="price">Price</option>
+      <option value="name">Name</option>
+      <option value="rating">Rating</option>
+      <option value="category">Category</option>
+    </select>
+    <select id="sortOrder">
+      <option value="asc">Asc</option>
+      <option value="desc">Desc</option>
+    </select>
+    <button id="searchBtn">Search</button>
+    <button id="resetBtn" class="reset-btn">Reset</button>
+  </div>
+
+  <div class="timing" id="timing"></div>
+
+  <div class="products" id="productGrid">
+    <div class="loading">Loading products…</div>
+  </div>
+
+  <div class="pagination" id="pagination"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
