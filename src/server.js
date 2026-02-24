@@ -22,7 +22,6 @@ app.get('/api/products', async (req, res) => {
     const sort = allowedSort.includes(req.query.sort) ? req.query.sort : 'id';
     const order = req.query.order === 'desc' ? 'DESC' : 'ASC';
 
-    // ---------- This query is intentionally slow without indexes ----------
     const [rows] = await pool.query(
       `SELECT id, sku, name, category, brand, price, stock_qty, rating
        FROM products
@@ -59,7 +58,6 @@ app.get('/api/products/search', async (req, res) => {
     let params = [];
 
     if (q) {
-      // LIKE '%…%' guarantees a full table scan without an index
       where.push('(name LIKE ? OR description LIKE ?)');
       params.push(`%${q}%`, `%${q}%`);
     }
@@ -82,7 +80,6 @@ app.get('/api/products/search', async (req, res) => {
 
     const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 
-    // ---------- Deliberately slow: full-table scan ----------
     const countSQL = `SELECT COUNT(*) AS total FROM products ${whereClause}`;
     const [[{ total }]] = await pool.query(countSQL, params);
 
@@ -123,7 +120,6 @@ app.get('/api/products/:id', async (req, res) => {
 // ---------- API: categories list ----------
 app.get('/api/categories', async (req, res) => {
   try {
-    // Also slow without an index on category
     const [rows] = await pool.query(
       'SELECT DISTINCT category FROM products ORDER BY category'
     );
