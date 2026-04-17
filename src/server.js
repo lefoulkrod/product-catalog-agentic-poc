@@ -12,6 +12,13 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // ---------- API: list / paginate products ----------
 // GET /api/products?page=1&limit=20&sort=price&order=asc
+//
+// Perf fix (2026-04-17): replaced the original two-query pattern
+// (data query + separate COUNT(*)) with SQL_CALC_FOUND_ROWS + FOUND_ROWS().
+// This cuts the per-request DB round-trips in half and avoids a second
+// full-table scan for the count.  See also:
+//   migrations/001_add_products_created_at_index.sql — adds the index that
+//   eliminates the full-table sort when ORDER BY created_at is used.
 app.get('/api/products', async (req, res) => {
   try {
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
@@ -22,15 +29,17 @@ app.get('/api/products', async (req, res) => {
     const sort = allowedSort.includes(req.query.sort) ? req.query.sort : 'id';
     const order = req.query.order === 'desc' ? 'DESC' : 'ASC';
 
+    // Use SQL_CALC_FOUND_ROWS so MySQL computes the total row count in the same
+    // pass as the data query — no separate COUNT(*) round-trip required.
     const [rows] = await pool.query(
-      `SELECT id, sku, name, category, brand, price, stock_qty, rating
+      `SELECT SQL_CALC_FOUND_ROWS id, sku, name, category, brand, price, stock_qty, rating
        FROM products
        ORDER BY ${sort} ${order}
        LIMIT ? OFFSET ?`,
       [limit, offset]
     );
 
-    const [[{ total }]] = await pool.query('SELECT COUNT(*) AS total FROM products');
+    const [[{ total }]] = await pool.query('SELECT FOUND_ROWS() AS total');
 
     res.json({
       page,
