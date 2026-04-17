@@ -80,14 +80,18 @@ app.get('/api/products/search', async (req, res) => {
 
     const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 
+    // Use pool.execute() (server-side prepared statements) instead of pool.query()
+    // to guarantee ? placeholders are bound at the protocol level and can never
+    // reach MySQL unresolved. This fixes the SQL syntax error observed in trace
+    // 0E367B3CD9D7CBB957F861003811C76C (span A669ABF258FB310C).
     const countSQL = `SELECT COUNT(*) AS total FROM products ${whereClause}`;
-    const [[{ total }]] = await pool.query(countSQL, params);
+    const [[{ total }]] = await pool.execute(countSQL, params);
 
     const dataSQL = `SELECT id, sku, name, category, brand, price, stock_qty, rating
                      FROM products ${whereClause}
                      ORDER BY price ASC
                      LIMIT ? OFFSET ?`;
-    const [rows] = await pool.query(dataSQL, [...params, limit, offset]);
+    const [rows] = await pool.execute(dataSQL, [...params, limit, offset]);
 
     res.json({
       page,
