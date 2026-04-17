@@ -1,0 +1,28 @@
+-- Migration: add_products_name_index.sql
+-- Purpose : Eliminate the full-table filesort on `products.name` that is
+--           causing severe latency on the /api/products endpoint.
+--
+-- Root cause: The GET /api/products route in src/server.js executes:
+--
+--     SELECT id, sku, name, category, brand, price, stock_qty, rating
+--     FROM products
+--     ORDER BY name DESC
+--     LIMIT ?
+--
+-- With no index on `name`, MySQL performs a full-table scan + filesort on
+-- every request. APM trace evidence:
+--   Trace ID  : 29FA2A2816158763749FCC96CB07F353
+--   DB span   : 2863 ms  (this single query)
+--   Endpoint  : /api/products  avg 1305 ms across sampled requests
+--
+-- Note on prior migration: add_categories_brands_indexes.sql previously
+-- added idx_products_category and idx_products_brand but did NOT address
+-- the name column. An earlier attempt targeted products.created_at, which
+-- is a valid sort column but is NOT the column used in the slow default
+-- sort path that drives the observed latency.
+--
+-- This migration is additive-only. No columns or tables are dropped or altered.
+-- IF NOT EXISTS prevents errors on re-run.
+
+-- Index for: SELECT ... FROM products ORDER BY name [ASC|DESC] LIMIT ?
+CREATE INDEX IF NOT EXISTS idx_products_name ON products (name);
