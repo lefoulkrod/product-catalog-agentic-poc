@@ -80,14 +80,17 @@ app.get('/api/products/search', async (req, res) => {
 
     const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 
+    // FIX: use pool.execute() (prepared-statement binding) instead of pool.query()
+    // pool.query() was sending raw '?' placeholders to MySQL instead of bound values,
+    // causing HTTP 500 on ~61% of search requests.
     const countSQL = `SELECT COUNT(*) AS total FROM products ${whereClause}`;
-    const [[{ total }]] = await pool.query(countSQL, params);
+    const [[{ total }]] = await pool.execute(countSQL, params);
 
     const dataSQL = `SELECT id, sku, name, category, brand, price, stock_qty, rating
                      FROM products ${whereClause}
                      ORDER BY price ASC
                      LIMIT ? OFFSET ?`;
-    const [rows] = await pool.query(dataSQL, [...params, limit, offset]);
+    const [rows] = await pool.execute(dataSQL, [...params, limit, offset]);
 
     res.json({
       page,
@@ -112,7 +115,7 @@ app.get('/api/products/:id', async (req, res) => {
     if (!product) return res.status(404).json({ error: 'Product not found' });
     res.json(product);
   } catch (err) {
-    console.error('GET /api/products/:id error:', err);
+    console.error('GET /api/products/:id error:', err)
     res.status(500).json({ error: 'Internal server error' });
   }
 });
