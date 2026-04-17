@@ -59,7 +59,7 @@ app.get('/api/products/search', async (req, res) => {
 
     if (q) {
       where.push('(name LIKE ? OR description LIKE ?)');
-      params.push(`%${q}%`, `%${q}%`);
+      params.push(`%${q}%`);
     }
     if (category) {
       where.push('category = ?');
