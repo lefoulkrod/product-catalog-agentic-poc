@@ -1,0 +1,36 @@
+-- Migration: add_products_price_index.sql
+-- Purpose : Eliminate the full-table filesort on `products.price` that is
+--           causing severe latency on the /api/products and
+--           /api/products/search endpoints.
+--
+-- Root cause: Two routes in src/server.js execute ORDER BY price:
+--
+--   1. GET /api/products (dynamic sort — `price` is a valid sort key):
+--        SELECT id, sku, name, category, brand, price, stock_qty, rating
+--        FROM products
+--        ORDER BY price ASC|DESC
+--        LIMIT ? OFFSET ?
+--
+--   2. GET /api/products/search (hardcoded sort):
+--        SELECT id, sku, name, category, brand, price, stock_qty, rating
+--        FROM products [WHERE ...]
+--        ORDER BY price ASC
+--        LIMIT ? OFFSET ?
+--
+-- With no index on `price`, MySQL performs a full-table scan + filesort on
+-- every paginated request. APM trace evidence:
+--   Trace ID  : 8533442926DB7BE6A1C7E2044711F980
+--   DB span   : 4,719 ms  (this single query)
+--   Endpoint  : /api/products
+--
+-- Note on prior migration (PR #16 — add_products_name_index.sql):
+--   That migration added idx_products_name ON products(name), which targets
+--   the wrong column for the sort path observed in the 4,719 ms trace. The
+--   slow query is ORDER BY price, not ORDER BY name. The name index is not
+--   harmful but provides no relief for the price filesort.
+--
+-- This migration is additive-only. No existing indexes, columns, or tables
+-- are dropped or altered. IF NOT EXISTS prevents errors on re-run.
+
+-- Index for: SELECT ... FROM products [WHERE ...] ORDER BY price [ASC|DESC] LIMIT ?
+CREATE INDEX IF NOT EXISTS idx_products_price ON products (price);
