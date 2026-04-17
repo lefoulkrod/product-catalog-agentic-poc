@@ -54,8 +54,8 @@ app.get('/api/products/search', async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
     const offset = (page - 1) * limit;
 
-    let where = [];
-    let params = [];
+    const where = [];
+    const params = [];
 
     if (q) {
       where.push('(name LIKE ? OR description LIKE ?)');
@@ -80,14 +80,22 @@ app.get('/api/products/search', async (req, res) => {
 
     const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 
+    // FIX: use pool.execute() instead of pool.query() for all parameterized
+    // queries in this handler.  pool.execute() sends COM_STMT_PREPARE +
+    // COM_STMT_EXECUTE, guaranteeing that '?' placeholders are always
+    // substituted server-side and can never be passed literally to MySQL.
+    // pool.query() can silently ignore the params array in certain mysql2
+    // edge cases, which caused the "syntax error near '?'" failures seen in
+    // traces FC4B11D38F5429B2F0C0D907947999D7 and 4CED1D05F216564800F54D7CCFDED67A.
+
     const countSQL = `SELECT COUNT(*) AS total FROM products ${whereClause}`;
-    const [[{ total }]] = await pool.query(countSQL, params);
+    const [[{ total }]] = await pool.execute(countSQL, params);
 
     const dataSQL = `SELECT id, sku, name, category, brand, price, stock_qty, rating
                      FROM products ${whereClause}
                      ORDER BY price ASC
                      LIMIT ? OFFSET ?`;
-    const [rows] = await pool.query(dataSQL, [...params, limit, offset]);
+    const [rows] = await pool.execute(dataSQL, [...params, limit, offset]);
 
     res.json({
       page,
